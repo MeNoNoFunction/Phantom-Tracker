@@ -2,45 +2,46 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PHANTOM TRACKER: PRO</title>
     <style>
-        :root { --bg: #050505; --accent: #39ff14; --text: #e0e0e0; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: monospace; overflow: hidden; }
+        :root { --bg: #050505; --accent: #39ff14; --panel: #111116; --text: #e0e0e0; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; overflow: hidden; }
         
-        /* Layout */
-        #game-interface { display: none; grid-template-columns: 250px 1fr 250px; height: 100vh; }
+        /* CRT EFFECT */
+        body::before { content: " "; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 4px, 3px 100%; pointer-events: none; z-index: 100; }
+
         .screen { display: none; width: 100vw; height: 100vh; place-content: center; text-align: center; }
         .active { display: grid; }
         
-        /* Modal */
-        .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); display: none; place-content: center; z-index: 1000; }
+        button { background: #000; border: 1px solid var(--accent); color: var(--accent); padding: 15px 30px; cursor: pointer; text-transform: uppercase; margin: 10px; transition: 0.3s; }
+        button:hover { background: var(--accent); color: #000; box-shadow: 0 0 20px var(--accent); }
         
-        button { background: #000; border: 1px solid var(--accent); color: var(--accent); padding: 15px; cursor: pointer; margin: 10px; }
-        button:hover { background: var(--accent); color: #000; }
+        #game-interface { display: none; grid-template-columns: 250px 1fr 250px; height: 100vh; }
+        canvas { background: #000; width: 100%; height: 100%; }
+        .hud { background: var(--panel); padding: 20px; border: 1px solid #333; overflow-y: auto; }
     </style>
 </head>
 <body>
 
-    <!-- Difficulty Selection -->
     <div id="main-menu" class="screen active">
-        <h1>PHANTOM TRACKER</h1>
-        <button onclick="gameState.init('EASY')">EASY (Slow Ghost, +$100)</button>
-        <button onclick="gameState.init('MID')">MID (Normal, +$200)</button>
-        <button onclick="gameState.init('HARD')">HARD (Fast Ghost, +$500)</button>
+        <h1 style="color:var(--accent); font-size: 4rem;">PHANTOM TRACKER</h1>
+        <button onclick="gameState.start()">BEGIN INVESTIGATION</button>
+        <button onclick="alert('WASD/Click to Move. Record evidence to identify ghost.')">TUTORIAL</button>
     </div>
 
     <div id="game-interface">
-        <aside class="hud"><h3>DEBUG: KITCHEN LOCKED</h3></aside>
+        <aside class="hud" id="left-hud">
+            <h3>LOADOUT</h3>
+            <div id="loadout-list"></div>
+        </aside>
         <main><canvas id="canvas"></canvas></main>
-        <aside class="hud"><button onclick="gameState.exit()">EXIT</button></aside>
-    </div>
-
-    <!-- Notification Modal -->
-    <div id="modal" class="modal">
-        <div style="background:#111; padding:40px; border:1px solid var(--accent);">
-            <h2 id="modal-text"></h2>
-            <button onclick="location.reload()">OK</button>
-        </div>
+        <aside class="hud" id="right-hud">
+            <h3>LOGBOOK</h3>
+            <div id="evidence-checklist"></div>
+            <hr>
+            <button onclick="gameState.exit()">EXIT VENUE</button>
+        </aside>
     </div>
 
     <script>
@@ -48,32 +49,56 @@
         const ctx = canvas.getContext('2d');
 
         const gameState = {
-            difficulty: 'EASY',
-            ghostSpeed: 1,
-            reward: 100,
+            active: false,
+            player: { x: 400, y: 300, speed: 5 },
+            ghosts: ["Spirit", "Wraith", "Phantom", "Poltergeist", "Banshee", "Demon"],
+            currentGhost: "",
             
-            init(level) {
-                this.difficulty = level;
-                if(level === 'MID') { this.ghostSpeed = 2; this.reward = 200; }
-                if(level === 'HARD') { this.ghostSpeed = 4; this.reward = 500; }
-                
+            start() {
                 document.getElementById('main-menu').classList.remove('active');
                 document.getElementById('game-interface').style.display = 'grid';
-                this.start();
+                this.active = true;
+                this.currentGhost = this.ghosts[Math.floor(Math.random() * this.ghosts.length)];
+                this.loop();
             },
             
-            start() { /* Game Loop Logic */ },
-            
             exit() {
-                document.getElementById('modal-text').innerText = "Mission Complete. Difficulty: " + this.difficulty + " | Earnings: $" + this.reward;
-                document.getElementById('modal').style.display = 'grid';
+                alert("REPORT: Entity identified as " + this.currentGhost);
+                location.reload();
+            },
+
+            draw() {
+                ctx.fillStyle = '#050505';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw Player
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(this.player.x, this.player.y, 10, 0, Math.PI*2);
+                ctx.fill();
+            },
+
+            loop() {
+                if(!this.active) return;
+                this.draw();
+                requestAnimationFrame(() => this.loop());
             }
         };
 
-        // Kitchen restriction logic
+        // Resize Canvas
+        function resize() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.onresize = resize;
+        resize();
+
+        // Input Handling
         window.onkeydown = (e) => {
-            // If player tries to move into kitchen coordinates, stop them
-            // Example: if (player.x > 235 && player.x < 500) return;
+            if(e.key === 'w') gameState.player.y -= gameState.player.speed;
+            if(e.key === 's') gameState.player.y += gameState.player.speed;
+            if(e.key === 'a') gameState.player.x -= gameState.player.speed;
+            if(e.key === 'd') gameState.player.x += gameState.player.speed;
         };
     </script>
 </body>
