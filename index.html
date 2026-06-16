@@ -2,104 +2,975 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PHANTOM TRACKER: PRO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Phantom Tracker 2D - Professional Dashboard Edition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Special+Elite&family=VT323&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #050505; --accent: #39ff14; --panel: #111116; --text: #e0e0e0; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; overflow: hidden; }
-        
-        /* CRT EFFECT */
-        body::before { content: " "; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 4px, 3px 100%; pointer-events: none; z-index: 100; }
+        :root {
+            --bg-dark: #020202;
+            --panel-bg: #08080c;
+            --ghost-green: #39ff14;
+            --ghost-dim: #11440a;
+            --hunt-red: #ff1111;
+            --text-color: #e5e5e5;
+            --border-color: #222230;
+        }
 
-        .screen { display: none; width: 100vw; height: 100vh; place-content: center; text-align: center; }
-        .active { display: grid; }
-        
-        button { background: #000; border: 1px solid var(--accent); color: var(--accent); padding: 15px 30px; cursor: pointer; text-transform: uppercase; margin: 10px; transition: 0.3s; }
-        button:hover { background: var(--accent); color: #000; box-shadow: 0 0 20px var(--accent); }
-        
-        #game-interface { display: none; grid-template-columns: 250px 1fr 250px; height: 100vh; }
-        canvas { background: #000; width: 100%; height: 100%; }
-        .hud { background: var(--panel); padding: 20px; border: 1px solid #333; overflow-y: auto; }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-color);
+            font-family: 'Special Elite', monospace;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #vignette {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, transparent 50%, rgba(0, 0, 0, 0.65) 95%);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        #glitch-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 0, 0, 0);
+            pointer-events: none;
+            z-index: 6;
+            transition: background 0.05s ease;
+        }
+
+        .screen {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            background: var(--panel-bg);
+            position: relative;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .screen.active {
+            display: grid;
+        }
+
+        h1.ghost-title {
+            font-family: 'Creepster', cursive;
+            font-size: clamp(35px, 8vw, 80px);
+            color: var(--ghost-green);
+            text-shadow: 0 0 20px rgba(57, 255, 20, 0.5);
+            margin: 0;
+            text-align: center;
+            letter-spacing: 3px;
+        }
+
+        h2.hunt-banner {
+            font-family: 'Creepster', cursive;
+            font-size: clamp(16px, 3vw, 28px);
+            color: var(--hunt-red);
+            text-shadow: 0 0 15px rgba(255, 17, 17, 0.8);
+            text-align: center;
+            margin: 0;
+            animation: frantic 0.15s infinite alternate;
+        }
+
+        .terminal-text {
+            font-family: 'VT323', monospace;
+            color: var(--ghost-green);
+            font-size: clamp(18px, 3.5vw, 24px);
+        }
+
+        .ghost-btn {
+            background: #111116;
+            border: 2px solid #2d2d35;
+            color: var(--text-color);
+            font-family: 'Special Elite', cursive;
+            padding: 12px 24px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-transform: uppercase;
+            position: relative;
+            z-index: 20;
+        }
+        .ghost-btn:hover, .ghost-btn:active {
+            border-color: var(--ghost-green);
+            color: var(--ghost-green);
+            box-shadow: 0 0 12px rgba(57, 255, 20, 0.4);
+            background: #181822;
+        }
+        .ghost-btn:disabled {
+            opacity: 0.15;
+            cursor: not-allowed;
+        }
+
+        /* MAIN MENU */
+        #main-menu {
+            grid-template-rows: 1fr auto 1.5fr;
+            align-content: center;
+            justify-content: center;
+            text-align: center;
+            gap: 30px;
+            padding: 20px;
+        }
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 80vw;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        /* MANUAL / CONTROLS MODAL */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 500;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-content {
+            background: #0c0c12;
+            border: 2px solid #3d3d4e;
+            width: 100%;
+            max-width: 600px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 0 0 40px rgba(0,0,0,0.9);
+        }
+        .guide-book {
+            background: #050508;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            overflow-y: auto;
+            max-height: 350px;
+            font-size: 14px;
+            line-height: 1.6;
+            text-align: left;
+        }
+
+        /* LOCKER MANIFEST */
+        #shop-screen {
+            padding: 25px;
+            grid-template-rows: auto 1fr auto;
+        }
+        .shop-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            overflow-y: auto;
+            margin: 20px 0;
+            padding-right: 5px;
+        }
+        .shop-item {
+            background: #121218;
+            border: 1px solid #22222d;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* THREE PANEL HUD ARCHITECTURE */
+        #game-screen {
+            display: none;
+            grid-template-columns: 260px 1fr 300px;
+            grid-template-rows: 65px 1fr;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        header {
+            grid-column: 1 / -1;
+            background: #030307;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 30;
+            height: 100%;
+        }
+
+        /* LEFT SIDEBAR: METRICS & DEVICE SELECTOR */
+        .left-sidebar {
+            background: #050508;
+            border-right: 2px solid var(--border-color);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            z-index: 25;
+        }
+        .dashboard-monitor {
+            background: #040a04;
+            border: 1px solid #143d14;
+            padding: 10px;
+            text-align: center;
+            border-radius: 2px;
+        }
+        .device-manager-title {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: #555566;
+            margin-top: 5px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 4px;
+        }
+        .device-selector-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .device-select-btn {
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 12px;
+            background: #0e0e14;
+        }
+
+        /* CENTER VIEWPORT */
+        .center-viewport {
+            position: relative;
+            background: #020205;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 20;
+        }
+        #gameCanvas {
+            background: #040406;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+            cursor: crosshair;
+        }
+
+        /* RIGHT SIDEBAR: PERMANENT LIVE LOGBOOK */
+        .right-sidebar {
+            background: #06060a;
+            border-left: 2px solid var(--border-color);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            z-index: 25;
+        }
+        .logbook-title {
+            font-family: 'Special Elite', monospace;
+            font-size: 14px;
+            letter-spacing: 2px;
+            color: #a252ff;
+            border-bottom: 1px solid #3d3d4e;
+            padding-bottom: 5px;
+            margin: 0;
+        }
+        .evidence-scroll-zone {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 45%;
+            overflow-y: auto;
+        }
+        .evidence-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #111116;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .evidence-state-btn {
+            background: #22222d;
+            color: #fff;
+            border: 1px solid #444455;
+            padding: 4px 10px;
+            font-family: monospace;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .evidence-state-btn.checked { background: var(--ghost-dim); color: var(--ghost-green); border-color: var(--ghost-green); }
+        .evidence-state-btn.crossed { background: #4a1111; color: var(--hunt-red); border-color: var(--hunt-red); text-decoration: line-through; }
+
+        .ghost-list-scroll-zone {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            overflow-y: auto;
+            flex-grow: 1;
+            border: 1px solid var(--border-color);
+            background: #030305;
+            padding: 5px;
+        }
+        .ghost-select-item {
+            padding: 8px;
+            background: #111116;
+            cursor: pointer;
+            border: 1px solid transparent;
+            font-size: 11px;
+        }
+        .ghost-select-item.selected {
+            background: var(--ghost-dim);
+            border-color: var(--ghost-green);
+        }
+        .ghost-select-item.impossible {
+            opacity: 0.15;
+            text-decoration: line-through;
+        }
+
+        .exit-venue-btn {
+            border-color: var(--hunt-red) !important;
+            color: #fff;
+            font-weight: bold;
+        }
+        .exit-venue-btn:hover {
+            box-shadow: 0 0 15px rgba(255, 17, 17, 0.4) !important;
+            color: var(--hunt-red);
+        }
+
+        @keyframes frantic {
+            0% { transform: scale(1); filter: brightness(1); }
+            100% { transform: scale(1.02); filter: brightness(1.2); }
+        }
     </style>
 </head>
 <body>
 
+    <div id="vignette"></div>
+    <div id="glitch-overlay"></div>
+
+    <!-- MAIN MENU -->
     <div id="main-menu" class="screen active">
-        <h1 style="color:var(--accent); font-size: 4rem;">PHANTOM TRACKER</h1>
-        <button onclick="gameState.start()">BEGIN INVESTIGATION</button>
-        <button onclick="alert('WASD/Click to Move. Record evidence to identify ghost.')">TUTORIAL</button>
+        <div></div>
+        <div>
+            <h1 class="ghost-title">PHANTOM TRACKER</h1>
+            <p style="letter-spacing: 6px; color: #444455; font-size: 14px;">2D TOP-DOWN INVESTIGATION SUITE</p>
+        </div>
+        <div class="menu-buttons">
+            <button class="ghost-btn" onclick="switchScreen('shop-screen')">Equipment Locker</button>
+            <button class="ghost-btn" onclick="openModal('controls-modal')">Controls Guide</button>
+        </div>
     </div>
 
-    <div id="game-interface">
-        <aside class="hud" id="left-hud">
-            <h3>LOADOUT</h3>
-            <div id="loadout-list"></div>
+    <!-- GLOBAL CONTROLS GUIDE MODAL -->
+    <div id="controls-modal" class="modal-overlay" onclick="closeModal(event, 'controls-modal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h1 class="ghost-title" style="font-size: 32px; text-align: left; margin: 0;">TACTICAL CONTROLS</h1>
+            <div class="guide-book">
+                <p><strong>• MOVEMENT OVERVIEW:</strong> Use the <strong>W, A, S, D</strong> keys or standard Arrow Keys to step through corridors. Alternatively, directly touch or left-click any room space on the viewport radar map grid to prompt autonomous navigation pathfinding straight to that focal spot.</p>
+                <p><strong>• HARDWARE SWAPPING:</strong> Use the interactive list on the left column dashboard to dynamically switch active processing devices. Monitor real-time local environment updates mapped immediately over your tracking sprite.</p>
+                <p><strong>• TRACKING EVIDENCE:</strong> Use the right-hand dashboard Logbook columns to actively record signs. Checking items filters out incompatible anomalies to isolate entity classification profiles before extraction loops.</p>
+            </div>
+            <button class="ghost-btn" onclick="document.getElementById('controls-modal').style.display='none'">Dismiss Matrix</button>
+        </div>
+    </div>
+
+    <!-- LOCKER STASH -->
+    <div id="shop-screen" class="screen">
+        <div>
+            <h1 class="ghost-title" style="font-size: 36px;">EQUIPMENT LOCKER</h1>
+            <div style="display:flex; justify-content:space-between; margin-top:10px; padding:0 10px;">
+                <span class="terminal-text">CASH: $<span id="wallet-display">150</span></span>
+                <span class="terminal-text" style="color: #555566;">MAP: TANGLEWOOD</span>
+            </div>
+        </div>
+        <div class="shop-grid" id="shop-items-container"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
+            <button class="ghost-btn" onclick="switchScreen('main-menu')">Menu</button>
+            <button class="ghost-btn" style="border-color: var(--ghost-green); color: var(--ghost-green);" onclick="startInvestigation()">START DISPATCH</button>
+        </div>
+    </div>
+
+    <!-- ACTIVE DISPATCH HUD (3-COLUMN SETUP) -->
+    <div id="game-screen">
+        <header>
+            <span class="terminal-text" id="header-status">INVESTIGATION ACTIVE</span>
+            <div id="hunt-banner-zone" style="display:none;"><h2 class="hunt-banner">HAUNTING EMERGENCE</h2></div>
+            <div style="display: flex; gap: 10px;">
+                <button class="ghost-btn" style="padding: 6px 15px; font-size: 12px;" onclick="openModal('controls-modal')">CONTROLS</button>
+                <button class="ghost-btn exit-venue-btn" style="padding: 6px 15px; font-size: 12px;" onclick="leaveInTruck()">EXIT VENUE</button>
+            </div>
+        </header>
+
+        <!-- LEFT SIDEBAR: MONITOR & SELECTOR LIST -->
+        <aside class="left-sidebar">
+            <div class="dashboard-monitor">
+                <div style="font-size: 10px; color:#555566; margin-bottom: 3px;">SANITY METER</div>
+                <div class="terminal-text" style="font-size: 24px;"><span id="sanity-display">100</span>%</div>
+            </div>
+            <div class="dashboard-monitor">
+                <div style="font-size: 10px; color:#555566; margin-bottom: 3px;">TRUCK RADAR EMF</div>
+                <div class="terminal-text" id="emftruck-display" style="font-size: 24px; color: #ff5500;">0</div>
+            </div>
+            
+            <button class="ghost-btn" style="border-color:#d4af37; font-size: 11px; padding: 8px;" id="pill-btn" onclick="useSanityPills()">REMEDY PILL (<span id="pill-count">0</span>)</button>
+            
+            <div class="device-manager-title">DEVICE MANAGER</div>
+            <div class="device-selector-list" id="device-selector-container">
+                <!-- Device selection buttons injected here dynamically -->
+            </div>
+
+            <div style="font-size: 10px; text-align: left; padding: 5px; margin-top: auto; background:#08080c; border: 1px solid var(--border-color);">
+                <div id="obj-1" style="color: #ffaa00; margin-bottom: 2px;">• Find Ghost Type</div>
+                <div id="obj-2" style="color: #666; margin-bottom: 2px;">• Watch EMF 5</div>
+                <div id="obj-3" style="color: #666;">• Crucifix Shield</div>
+            </div>
         </aside>
-        <main><canvas id="canvas"></canvas></main>
-        <aside class="hud" id="right-hud">
-            <h3>LOGBOOK</h3>
-            <div id="evidence-checklist"></div>
-            <hr>
-            <button onclick="gameState.exit()">EXIT VENUE</button>
+
+        <!-- CENTER VIEWPORT -->
+        <main class="center-viewport">
+            <canvas id="gameCanvas"></canvas>
+        </main>
+
+        <!-- RIGHT SIDEBAR: PERMANENT LIVE LOGBOOK -->
+        <aside class="right-sidebar">
+            <h3 class="logbook-title">ANOMALY LOGBOOK</h3>
+            <div class="evidence-scroll-zone" id="evidence-box">
+                <!-- Checklist dynamic injection -->
+            </div>
+            
+            <h3 class="logbook-title" style="color: #555566; border-color: var(--border-color);">IDENTITIES</h3>
+            <div class="ghost-list-scroll-zone" id="ghost-list-box">
+                <!-- Ghost row selections injection -->
+            </div>
         </aside>
     </div>
 
     <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        const EVIDENCE_TYPES = {
+            EMF5: "EMF Level 5",
+            UV: "UV Fingerprints",
+            WRITING: "Ghost Writing",
+            BOX: "Spirit Box Logs",
+            FREEZING: "Sub-Zero Air",
+            DOTS: "DOTS Distortion"
+        };
 
-        const gameState = {
-            active: false,
-            player: { x: 400, y: 300, speed: 5 },
-            ghosts: ["Spirit", "Wraith", "Phantom", "Poltergeist", "Banshee", "Demon"],
-            currentGhost: "",
-            
-            start() {
-                document.getElementById('main-menu').classList.remove('active');
-                document.getElementById('game-interface').style.display = 'grid';
-                this.active = true;
-                this.currentGhost = this.ghosts[Math.floor(Math.random() * this.ghosts.length)];
-                this.loop();
-            },
-            
-            exit() {
-                alert("REPORT: Entity identified as " + this.currentGhost);
-                location.reload();
-            },
+        const GHOSTS = [
+            { name: "Spirit", evidence: ["EMF5", "BOX", "WRITING"], quirk: "Standard profile mechanics." },
+            { name: "Wraith", evidence: ["EMF5", "BOX", "DOTS"], quirk: "Alters tracking vectors easily." },
+            { name: "Phantom", evidence: ["BOX", "UV", "DOTS"], quirk: "Drains biometric levels fast." },
+            { name: "Poltergeist", evidence: ["BOX", "UV", "WRITING"], quirk: "Triggers high activity spikes." },
+            { name: "Banshee", evidence: ["EMF5", "UV", "DOTS"], quirk: "Focuses pathtracking precisely." },
+            { name: "Jinn", evidence: ["EMF5", "UV", "FREEZING"], quirk: "Spikes speed down lines of sight." },
+            { name: "Mare", evidence: ["BOX", "WRITING", "FREEZING"], quirk: "Aggressive bursts inside dark rooms." },
+            { name: "Revenant", evidence: ["EMF5", "WRITING", "FREEZING"], quirk: "Moves rapidly if flashlights trace it." },
+            { name: "Shade", evidence: ["EMF5", "WRITING", "DOTS"], quirk: "Extremely passive setups." },
+            { name: "Demon", evidence: ["UV", "WRITING", "FREEZING"], quirk: "Triggers hunting sequences early." },
+            { name: "Yurei", evidence: ["UV", "FREEZING", "DOTS"], quirk: "Alters spatial visibility bounds." },
+            { name: "Oni", evidence: ["EMF5", "FREEZING", "DOTS"], quirk: "High visual manifestation flickers." }
+        ];
 
-            draw() {
-                ctx.fillStyle = '#050505';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                // Draw Player
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.arc(this.player.x, this.player.y, 10, 0, Math.PI*2);
-                ctx.fill();
-            },
-
-            loop() {
-                if(!this.active) return;
-                this.draw();
-                requestAnimationFrame(() => this.loop());
+        let state = {
+            wallet: 150,
+            inventory: {
+                "Flashlight": { count: 1, cost: 0, starter: true },
+                "Strong Flashlight": { count: 0, cost: 75, starter: false },
+                "EMF Reader": { count: 1, cost: 0, starter: true },
+                "UV Glowstick": { count: 0, cost: 30, starter: false },
+                "Ghost Writing Notebook": { count: 1, cost: 0, starter: true },
+                "Spirit Box Radio": { count: 0, cost: 50, starter: false },
+                "Thermometer": { count: 1, cost: 0, starter: true },
+                "DOTS Laser Grid": { count: 0, cost: 65, starter: false },
+                "Sanity Pills Injection": { count: 0, cost: 20, starter: false },
+                "Ancient Crucifix": { count: 0, cost: 80, starter: false }
             }
         };
 
-        // Resize Canvas
-        function resize() {
-            canvas.width = canvas.parentElement.clientWidth;
-            canvas.height = canvas.parentElement.clientHeight;
-        }
-        window.onresize = resize;
-        resize();
-
-        // Input Handling
-        window.onkeydown = (e) => {
-            if(e.key === 'w') gameState.player.y -= gameState.player.speed;
-            if(e.key === 's') gameState.player.y += gameState.player.speed;
-            if(e.key === 'a') gameState.player.x -= gameState.player.speed;
-            if(e.key === 'd') gameState.player.x += gameState.player.speed;
+        let match = {
+            active: false, sanity: 100, pillsCount: 0, crucifixesCount: 0, hasStrongFlashlight: false,
+            loadout: [], activeSlot: 0, evidenceStates: {}, selectedGhostGuess: null,
+            
+            player: { x: 100, y: 390, targetX: null, targetY: null, speed: 3.5, radius: 10, heading: 0 },
+            
+            walls: [
+                {x: 40, y: 40, w: 720, h: 15}, {x: 40, y: 40, w: 15, h: 440},
+                {x: 40, y: 470, w: 720, h: 15}, {x: 745, y: 40, w: 15, h: 445},
+                {x: 220, y: 40, w: 15, h: 170}, {x: 220, y: 270, w: 15, h: 215}, 
+                {x: 220, y: 220, w: 260, h: 15}, {x: 550, y: 220, w: 210, h: 15}, 
+                {x: 500, y: 40, w: 15, h: 180}
+            ],
+            rooms: [
+                { name: "Safety Hub (Truck)", x: 45, y: 280, w: 110, h: 150, color: "#0d140d" },
+                { name: "Entry Hall", x: 155, y: 235, w: 345, h: 235, color: "#0c0c12" },
+                { name: "Bedroom", x: 45, y: 55, w: 175, h: 165, color: "#120e0c" },
+                { name: "Kitchen Layout", x: 235, y: 55, w: 265, h: 165, color: "#0e1212" },
+                { name: "Attic Area", x: 515, y: 55, w: 230, h: 415, color: "#12120e" }
+            ],
+            
+            ghost: {
+                profile: null, x: 0, y: 0,
+                activityTimer: 0, currentEMF: 0, isHunting: false, huntTimer: 0, speed: 2.1,
+                visTimer: 0, dotsActive: false, writingDone: false, fingerprintsPresent: false,
+                evX: 620, evY: 150
+            },
+            objEMF5Witnessed: false, objCrucifixUsed: false
         };
+
+        let audioCtx = null; let audioEnabled = false;
+        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        
+        function toggleAudioSystem() {
+            initAudio(); audioEnabled = !audioEnabled;
+            playBeep(200, "sine", 0.05, 0.05);
+        }
+
+        function playBeep(freq, type="sine", duration=0.1, vol=0.1) {
+            if (!audioEnabled || !audioCtx) return;
+            try {
+                let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+                osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + duration);
+            } catch(e){}
+        }
+
+        function switchScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            const target = document.getElementById(id);
+            if (target) target.classList.add('active');
+            
+            if (id === 'shop-screen') renderShop();
+            if (id === 'game-screen') {
+                document.getElementById('game-screen').style.display = 'grid';
+                resizeGameCanvas();
+            } else {
+                document.getElementById('game-screen').style.display = 'none';
+            }
+        }
+
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(e, id) { if(e.target === document.getElementById(id)) document.getElementById(id).style.display = 'none'; }
+
+        function renderShop() {
+            document.getElementById('wallet-display').innerText = state.wallet;
+            const container = document.getElementById('shop-items-container'); container.innerHTML = "";
+            for (const [name, data] of Object.entries(state.inventory)) {
+                let div = document.createElement('div'); div.className = "shop-item";
+                div.innerHTML = `
+                    <div>
+                        <div style="font-size:14px; font-weight:bold; color: #fff;">${name}</div>
+                        <div style="font-size:11px; color:#777788;">Owned: ${data.count}</div>
+                    </div>
+                    <button class="ghost-btn" style="padding:4px 10px; font-size:11px;" 
+                        onclick="buyItem('${name}')" ${state.wallet < data.cost || data.starter ? 'disabled' : ''}>
+                        +$${data.cost}
+                    </button>
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        function buyItem(name) {
+            let item = state.inventory[name];
+            if (state.wallet >= item.cost) {
+                state.wallet -= item.cost; item.count++; renderShop();
+                playBeep(440, "sine", 0.05, 0.1);
+            }
+        }
+
+        function startInvestigation() {
+            match.active = true; match.sanity = 100; match.selectedGhostGuess = null;
+            match.pillsCount = state.inventory["Sanity Pills Injection"].count;
+            match.crucifixesCount = state.inventory["Ancient Crucifix"].count;
+            match.hasStrongFlashlight = state.inventory["Strong Flashlight"].count > 0;
+
+            match.loadout = [];
+            if(state.inventory["EMF Reader"].count > 0) match.loadout.push("EMF Reader");
+            if(state.inventory["Thermometer"].count > 0) match.loadout.push("Thermometer");
+            if(state.inventory["UV Glowstick"].count > 0) match.loadout.push("UV Glowstick");
+            if(state.inventory["Ghost Writing Notebook"].count > 0) match.loadout.push("Writing Book");
+            if(state.inventory["Spirit Box Radio"].count > 0) match.loadout.push("Spirit Box");
+            if(state.inventory["DOTS Laser Grid"].count > 0) match.loadout.push("DOTS Projector");
+            
+            while(match.loadout.length < 3) match.loadout.push("Flashlight");
+            match.loadout = match.loadout.slice(0, 3); match.activeSlot = 0;
+
+            GHOSTS.forEach(g => match.evidenceStates[g.name] = 0);
+            for(let key in EVIDENCE_TYPES) match.evidenceStates[key] = 0;
+
+            match.ghost.profile = GHOSTS[Math.floor(Math.random() * GHOSTS.length)];
+            
+            let hauntedRoom = match.rooms[Math.floor(Math.random() * 4) + 1];
+            match.ghost.x = hauntedRoom.x + (hauntedRoom.w / 2);
+            match.ghost.y = hauntedRoom.y + (hauntedRoom.h / 2);
+            match.ghost.evX = match.ghost.x + 15;
+            match.ghost.evY = match.ghost.y + 15;
+
+            match.ghost.isHunting = false; match.ghost.huntTimer = 0;
+            match.ghost.speed = match.ghost.profile.name === "Revenant" ? 3.5 : 2.0;
+
+            match.objEMF5Witnessed = false; match.objCrucifixUsed = false;
+            match.player.x = 100; match.player.y = 350; 
+            match.player.targetX = null; match.player.targetY = null;
+
+            buildJournalUI();
+            renderDeviceSelector();
+            switchScreen('game-screen');
+            toggleAudioSystem(); 
+        }
+
+        function renderDeviceSelector() {
+            const container = document.getElementById("device-selector-container");
+            container.innerHTML = "";
+            match.loadout.forEach((toolName, idx) => {
+                let btn = document.createElement("button");
+                btn.className = "ghost-btn device-select-btn";
+                btn.id = `device-slot-${idx}`;
+                btn.onclick = () => selectSlot(idx);
+                btn.innerText = toolName.toUpperCase();
+                container.appendChild(btn);
+            });
+            updateDeviceHighlights();
+        }
+
+        function selectSlot(index) { 
+            match.activeSlot = index; 
+            updateDeviceHighlights();
+            playBeep(350, "sine", 0.05, 0.05);
+        }
+
+        function updateDeviceHighlights() {
+            match.loadout.forEach((_, idx) => {
+                let btn = document.getElementById(`device-slot-${idx}`);
+                if(!btn) return;
+                if(match.activeSlot === idx) {
+                    btn.style.borderColor = "var(--ghost-green)";
+                    btn.style.color = "var(--ghost-green)";
+                    btn.style.background = "#141c14";
+                } else {
+                    btn.style.borderColor = "#2d2d35";
+                    btn.style.color = "var(--text-color)";
+                    btn.style.background = "#0e0e14";
+                }
+            });
+        }
+
+        function buildJournalUI() {
+            const evBox = document.getElementById('evidence-box'); evBox.innerHTML = "";
+            for (const [key, name] of Object.entries(EVIDENCE_TYPES)) {
+                let div = document.createElement('div'); div.className = "evidence-row";
+                div.innerHTML = `<span style="font-size:12px; color:#ccc;">${name}</span><button class="evidence-state-btn" id="ev-btn-${key}" onclick="cycleEvidence('${key}')">?</button>`;
+                evBox.appendChild(div);
+            }
+
+            const gBox = document.getElementById('ghost-list-box'); gBox.innerHTML = "";
+            GHOSTS.forEach(g => {
+                let div = document.createElement('div'); div.className = "ghost-select-item"; div.id = `ghost-row-${g.name}`;
+                div.onclick = () => selectGhostHypothesis(g.name);
+                div.innerHTML = `<strong>${g.name}</strong> <span style="font-size:9px; color:#666;"><br>${g.quirk}</span>`;
+                gBox.appendChild(div);
+            });
+            updateJournalLogicDisplay();
+        }
+
+        function cycleEvidence(key) {
+            let cur = match.evidenceStates[key] || 0; let next = cur === 0 ? 1 : (cur === 1 ? -1 : 0);
+            match.evidenceStates[key] = next;
+            const btn = document.getElementById(`ev-btn-${key}`);
+            btn.className = "evidence-state-btn";
+            if (next === 1) { btn.innerText = "✓"; btn.classList.add('checked'); }
+            else if (next === -1) { btn.innerText = "X"; btn.classList.add('crossed'); }
+            else { btn.innerText = "?"; }
+            updateJournalLogicDisplay();
+        }
+
+        function updateJournalLogicDisplay() {
+            let confirmed = []; let excluded = [];
+            for (const [key, val] of Object.entries(match.evidenceStates)) {
+                if (val === 1) confirmed.push(key); if (val === -1) excluded.push(key);
+            }
+            GHOSTS.forEach(g => {
+                const el = document.getElementById(`ghost-row-${g.name}`); if (!el) return;
+                let failConf = confirmed.some(e => !g.evidence.includes(e));
+                let failEx = g.evidence.some(e => excluded.includes(e));
+                if (failConf || failEx) el.className = "ghost-select-item impossible";
+                else {
+                    el.className = "ghost-select-item";
+                    if (match.selectedGhostGuess === g.name) el.classList.add('selected');
+                }
+            });
+        }
+
+        function selectGhostHypothesis(name) {
+            const row = document.getElementById(`ghost-row-${name}`); if (row && row.classList.contains('impossible')) return;
+            match.selectedGhostGuess = match.selectedGhostGuess === name ? null : name;
+            updateJournalLogicDisplay();
+        }
+
+        function useSanityPills() {
+            if (match.pillsCount > 0 && match.sanity < 100) {
+                match.pillsCount--; match.sanity = Math.min(100, match.sanity + 45);
+                playBeep(550, "sine", 0.1, 0.1);
+            }
+        }
+
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        let keysPressed = {};
+        let aspectScale = 1;
+        let offsetX = 0; let offsetY = 0;
+
+        function resizeGameCanvas() {
+            const container = canvas.parentElement;
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            canvas.width = w;
+            canvas.height = h;
+
+            let scaleX = w / 800;
+            let scaleY = h / 520;
+            aspectScale = Math.min(scaleX, scaleY);
+
+            offsetX = (w - (800 * aspectScale)) / 2;
+            offsetY = (h - (520 * aspectScale)) / 2;
+        }
+        window.addEventListener('resize', () => { if(match.active) resizeGameCanvas(); });
+
+        // INITIALIZE INPUT SYSTEM SEPARATELY SO WE CAN CAPTURE CLICKS
+        function initInputSystems() {
+            window.onkeydown = (e) => { keysPressed[e.key.toLowerCase()] = true; };
+            window.onkeyup = (e) => { keysPressed[e.key.toLowerCase()] = false; };
+
+            const handlePointerAction = (e) => {
+                if (!match.active) return;
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                let relativeX = (clientX - rect.left) - offsetX;
+                let relativeY = (clientY - rect.top) - offsetY;
+                
+                match.player.targetX = relativeX / aspectScale;
+                match.player.targetY = relativeY / aspectScale;
+            };
+            canvas.addEventListener('mousedown', handlePointerAction);
+            canvas.addEventListener('touchstart', handlePointerAction);
+        }
+
+        function checkWallOverlap(px, py, r) {
+            for (let wall of match.walls) {
+                let closestX = Math.max(wall.x, Math.min(px, wall.x + wall.w));
+                let closestY = Math.max(wall.y, Math.min(py, wall.y + wall.h));
+                let distanceX = px - closestX; let distanceY = py - closestY;
+                if ((distanceX * distanceX + distanceY * distanceY) < (r * r)) return true;
+            }
+            return false;
+        }
+
+        function updateGameLoop() {
+            if (!match.active) { requestAnimationFrame(updateGameLoop); return; }
+
+            let dx = 0; let dy = 0; p = match.player;
+            if (keysPressed['w'] || keysPressed['arrowup']) { dy = -p.speed; p.targetX = null; p.heading = 4.71; }
+            if (keysPressed['s'] || keysPressed['arrowdown']) { dy = p.speed; p.targetX = null; p.heading = 1.57; }
+            if (keysPressed['a'] || keysPressed['arrowleft']) { dx = -p.speed; p.targetX = null; p.heading = 3.14; }
+            if (keysPressed['d'] || keysPressed['arrowright']) { dx = p.speed; p.targetX = null; p.heading = 0; }
+
+            if (p.targetX !== null && p.targetY !== null) {
+                let distance = Math.hypot(p.targetX - p.x, p.targetY - p.y);
+                if (distance > 4) {
+                    p.heading = Math.atan2(p.targetY - p.y, p.targetX - p.x);
+                    dx = Math.cos(p.heading) * p.speed; dy = Math.sin(p.heading) * p.speed;
+                } else { p.targetX = null; p.targetY = null; }
+            }
+
+            let nextX = p.x + dx; let nextY = p.y + dy;
+            if (!checkWallOverlap(nextX, p.y, p.radius)) p.x = nextX;
+            if (!checkWallOverlap(p.x, nextY, p.radius)) p.y = nextY;
+
+            let currentRoomObj = match.rooms.find(r => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) || match.rooms[0];
+            if (currentRoomObj.name !== "Safety Hub (Truck)") {
+                match.sanity = Math.max(0, match.sanity - 0.012);
+            }
+
+            processGhostAI2D();
+            drawPremiumViewport2D();
+
+            document.getElementById("sanity-display").innerText = Math.round(match.sanity);
+            document.getElementById("pill-count").innerText = match.pillsCount;
+            document.getElementById("emftruck-display").innerText = match.ghost.currentEMF;
+
+            requestAnimationFrame(updateGameLoop);
+        }
+
+        function processGhostAI2D() {
+            let g = match.ghost; g.activityTimer++;
+            let dist = Math.hypot(match.player.x - g.x, match.player.y - g.y);
+
+            if (g.activityTimer % 130 === 0 && !g.isHunting) {
+                if (Math.random() < 0.55) {
+                    g.currentEMF = Math.random() < 0.28 ? 5 : Math.floor(Math.random() * 3) + 2;
+                    if (g.currentEMF === 5 && g.profile.evidence.includes("EMF5")) match.objEMF5Witnessed = true;
+                    g.visTimer = 80;
+                    if (dist < 200) playBeep(240, "triangle", 0.15, 0.08);
+
+                    if (g.profile.evidence.includes("WRITING")) g.writingDone = true;
+                    if (g.profile.evidence.includes("UV")) g.fingerprintsPresent = true;
+                    if (g.profile.evidence.includes("DOTS")) g.dotsActive = true;
+                } else { g.currentEMF = 0; }
+            }
+
+            if (g.visTimer > 0) g.visTimer--;
+
+            if (!g.isHunting && match.sanity < 50 && Math.random() < 0.003) {
+                if (dist < 120 && match.crucifixesCount > 0) {
+                    match.crucifixesCount--; match.objCrucifixUsed = true; g.currentEMF = 2;
+                    playBeep(850, "sawtooth", 0.3, 0.15);
+                } else {
+                    g.isHunting = true; g.huntTimer = 550;
+                    document.getElementById("hunt-banner-zone").style.display = "block";
+                    playBeep(70, "sawtooth", 0.6, 0.25);
+                }
+            }
+
+            if (g.isHunting) {
+                g.huntTimer--;
+                let angle = Math.atan2(match.player.x - g.x, match.player.y - g.y); 
+                let stepX = Math.sin(angle) * g.speed; let stepY = Math.cos(angle) * g.speed;
+                if(!checkWallOverlap(g.x + stepX, g.y, 8)) g.x += stepX;
+                if(!checkWallOverlap(g.x, g.y + stepY, 8)) g.y += stepY;
+
+                if (dist < (match.player.radius + 8)) {
+                    match.active = false;
+                    document.getElementById("hunt-banner-zone").style.display = "none";
+                    for(let k in state.inventory) { if(!state.inventory[k].starter) state.inventory[k].count = 0; }
+                    alert("ELIMINATED. Caught by the entity. All purchased hardware gear inventory dropped.");
+                    switchScreen('main-menu');
+                }
+
+                if (g.huntTimer <= 0) {
+                    g.isHunting = false; document.getElementById("hunt-banner-zone").style.display = "none";
+                }
+            }
+        }
+
+        function drawPremiumViewport2D() {
+            ctx.save();
+            ctx.fillStyle = "#020205";
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(aspectScale, aspectScale);
+            
+            ctx.fillStyle = "#040406";
+            ctx.fillRect(0, 0, 800, 520);
+
+            match.rooms.forEach(room => {
+                ctx.fillStyle = room.color; ctx.fillRect(room.x, room.y, room.w, room.h);
+                ctx.strokeStyle = "rgba(40, 40, 60, 0.2)"; ctx.lineWidth = 1;
+                for(let gx = room.x; gx < room.x + room.w; gx += 32) {
+                    ctx.beginPath(); ctx.moveTo(gx, room.y); ctx.lineTo(gx, room.y + room.h); ctx.stroke();
+                }
+                ctx.font = "10px 'Special Elite'"; ctx.fillStyle = "#555577";
+                ctx.fillText(room.name.toUpperCase(), room.x + 12, room.y + 22);
+            });
+
+            ctx.fillStyle = "#1e2029";
+            match.walls.forEach(w => {
+                ctx.fillRect(w.x, w.y, w.w, w.h);
+                ctx.strokeStyle = "#2d303d"; ctx.lineWidth = 1;
+                ctx.strokeRect(w.x, w.y, w.w, w.h);
+            });
+
+            let p = match.player; let g = match.ghost;
+            let dist = Math.hypot(p.x - g.x, p.y - g.y);
+
+            if (match.ghost.writingDone && match.loadout[match.activeSlot] === "Writing Book" && dist < 160) {
+                ctx.fillStyle = "#f5f5f5"; ctx.fillRect(g.evX, g.evY, 14, 16);
+                ctx.fillStyle = "#222"; ctx.fillRect(g.evX + 3, g.evY + 4, 8, 2);
+            }
+            if (match.ghost.fingerprintsPresent && match.loadout[match.activeSlot] === "UV Glowstick" && dist < 130) {
+                ctx.fillStyle = "rgba(0, 255, 255, 0.8)"; ctx.beginPath(); ctx.arc(g.evX - 25, g.evY + 15, 6, 0, Math.PI * 2); ctx.fill();
+            }
+
+            ctx.fillStyle = "var(--ghost-green)"; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "#000"; ctx.lineWidth = 3; ctx.beginPath();
+            ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + Math.cos(p.heading) * 8, p.y + Math.sin(p.heading) * 8); ctx.stroke();
+
+            ctx.save();
+            ctx.globalCompositeOperation = "destination-over";
+            let fRange = match.hasStrongFlashlight ? 260 : 150;
+            let fCone = 0.55;
+            let grad = ctx.createRadialGradient(p.x, p.y, 8, p.x, p.y, fRange);
+            grad.addColorStop(0, "rgba(255,255,235,0.45)"); grad.addColorStop(0.8, "rgba(255,255,235,0.05)"); grad.addColorStop(1, "transparent");
+            ctx.fillStyle = grad; ctx.beginPath(); ctx.moveTo(p.x, p.y);
+            ctx.arc(p.x, p.y, fRange, p.heading - fCone, p.heading + fCone); ctx.closePath(); ctx.fill();
+            ctx.restore();
+
+            if (g.isHunting || (g.visTimer > 0 && dist < 170)) {
+                ctx.fillStyle = g.isHunting ? "var(--hunt-red)" : "rgba(255,255,255,0.45)";
+                ctx.beginPath(); ctx.arc(g.x, g.y, 9, 0, Math.PI * 2); ctx.fill();
+            }
+
+            let curTool = match.loadout[match.activeSlot];
+            ctx.font = "13px 'VT323'"; ctx.fillStyle = "#ffffff";
+            
+            if (curTool === "EMF Reader") {
+                let localEMF = dist < 120 ? g.currentEMF : 0;
+                ctx.fillStyle = localEMF === 5 ? "var(--hunt-red)" : "var(--ghost-green)";
+                ctx.fillText(`[EMF READOUT: ${localEMF}]`, p.x - 40, p.y - 18);
+            } else if (curTool === "Thermometer") {
+                let isFreezing = g.profile.evidence.includes("FREEZING") && dist < 130;
+                ctx.fillStyle = isFreezing ? "#4fc3f7" : "#ffb74d";
+                ctx.fillText(isFreezing ? "TEMP: -5.4 °C" : "TEMP: 18.2 °C", p.x - 35, p.y - 18);
+            } else if (curTool === "Spirit Box") {
+                ctx.fillStyle = "#00e5ff";
+                if (dist < 80 && g.profile.evidence.includes("BOX")) ctx.fillText(`"LEAVE NOW"`, p.x - 32, p.y - 18);
+                else ctx.fillText(`"SIGNAL SEARCHING"`, p.x - 45, p.y - 18);
+            } else if (g.dotsActive && curTool === "DOTS Projector" && dist < 160) {
+                ctx.fillStyle = "rgba(57, 255, 20, 0.4)"; ctx.fillText("• RADAR DOTS WARPING •", p.x - 55, p.y - 18);
+            } else {
+                ctx.fillText(curTool.toUpperCase(), p.x - 25, p.y - 18);
+            }
+
+            ctx.restore();
+        }
+
+        function leaveInTruck() {
+            if (!match.active) return;
+            let moneySum = 0; let msg = "";
+            if (match.selectedGhostGuess === match.ghost.profile.name) {
+                moneySum += 150; msg += "• Ghost Identity Correctly Logged: +$150\n";
+            } else { msg += `• Incorrect Log Diagnosis! (The phantom was a ${match.ghost.profile.name})\n`; }
+            
+            if (match.objEMF5Witnessed) { moneySum += 40; msg += "• Objective Secured (EMF 5 Telemetry): +$40\n"; }
+            if (match.objCrucifixUsed) { moneySum += 40; msg += "• Objective Secured (Blocked Assault): +$40\n"; }
+
+            state.wallet += moneySum; match.active = false;
+            alert(`CONTRACT BRIEF DISPATCH REPORT:\n\n${msg}\nDisbursed Payment Transfer: $${moneySum}`);
+            switchScreen('shop-screen');
+        }
+
+        // INITIALIZE EVENTS ON DOCUMENT LOAD SO CLICK FUNCTIONS ALWAYS RESPOND
+        initInputSystems();
+        requestAnimationFrame(updateGameLoop);
     </script>
 </body>
 </html>
